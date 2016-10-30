@@ -1,37 +1,41 @@
 from django.shortcuts import render
-from django.utils import timezone
-from .models import Post
-from django.shortcuts import render, get_object_or_404
-from .forms import PostForm
-from django.shortcuts import redirect
 
-def post_list(request):
-    posts = Post.objects.filter(published_date__lte=timezone.now()).order_by('published_date')
-    return render(request, 'blog/post_list.html', {'posts': posts})
-def post_detail(request, pk):
-    post = get_object_or_404(Post, pk=pk)
-    return render(request, 'blog/post_detail.html', {'post': post})
-def post_new(request):
+#librería para manejar el envío de mensajes
+
+from django.contrib import messages
+from .forms import EstudianteForm
+from blog.models import Estudiante, Curso
+
+
+#Vista para insertar una nueva película y los actores que actúan en ella.
+
+def estudiante_nueva(request):
     if request.method == "POST":
-        form = PostForm(request.POST)
-        if form.is_valid():
-            post = form.save(commit=False)
-            post.author = request.user
-            post.published_date = timezone.now()
-            post.save()
-            return redirect('blog.views.post_detail', pk=post.pk)
+
+#Creamos un objeto que va a contener todos los datos que el formulario PeliculaForm nos manda a través del método POST
+        formulario = EstudianteForm(request.POST)
+        if formulario.is_valid():
+
+#Guardamos primero la Película, para que exista un ID para relacionar a los actores en la tabla Actuaciones
+
+#Como el formulario incluye campos de varias tablas, aquí es necesario indicar los campos que corresponden a Película.
+
+            estudiante = Estudiante.objects.create(nombre=formulario.cleaned_data['nombre'], carne = formulario.cleaned_data['carne'])
+
+#Por cada actor que esté seleccionado en el formulario, recorrerlo para guardarlo en la tabla Actuación
+            for curso_id in request.POST.getlist('estudiantes'):
+
+#A la tabla Actuación le decimos cual es el ID del Actor y el ID de Película
+
+              estudio = Estudio(curso_id=curso_id, estudiante_id = estudiante.id)
+
+#Vamos guardando cada actuación que va recorriendo el cilco for
+
+              estudio.save()
+
+#Al terminar el ciclo for, mandamos un mensaje al template para que diga que los datos se guardaron exitosamente
+
+              messages.add_message(request, messages.SUCCESS, 'Informacion Guardada Exitosamente')
     else:
-        form = PostForm()
-    return render(request, 'blog/post_edit.html', {'form': form})
-def post_edit(request, pk):
-    post = get_object_or_404(Post, pk=pk)
-    if request.method == "POST":
-        form = PostForm(request.POST, instance=post)
-        if form.is_valid():
-            post = form.save(commit=False)
-            post.author = request.user
-            post.save()
-            return redirect('blog.views.post_detail', pk=post.pk)
-    else:
-        form = PostForm(instance=post)
-    return render(request, 'blog/post_edit.html', {'form': form})
+        formulario = EstudianteForm()
+    return render(request, 'blog/Estudiante_editar.html', {'formulario': formulario})
